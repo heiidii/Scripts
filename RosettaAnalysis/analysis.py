@@ -57,7 +57,7 @@ if __name__ ==  "__main__":
 	parser.add_argument('--type_calc', help='type of rmsd calculation, options are rmsd_ca')
 	parser.add_argument('--native', help='reference pdb',default='native.pdb')
 	parser.add_argument('--traj', action='store_false', help='process list of files')
-	parser.add_argument('--file', action='store_true', help='process single file')
+	parser.add_argument('--fileonly', action='store_true', help='process single file')
 	parser.add_argument('--singlefile', help='pdb file name for rmsd calculation', default='input.pdb')
 	parser.add_argument('--filelist', help='list of pdb files for rmsd calculation', default='list.txt')
 	
@@ -71,14 +71,14 @@ if __name__ ==  "__main__":
 	else:
 		print "Cannot calcualte rmsd without native structure"
 		exit()
-	if args.file:
+	if args.fileonly:
 		filename=args.singlefile
-		if os.path.exists(singlefile):
+		if os.path.exists(filename):
 			rmsd = GetRMSDForFile(filename,pose_ref,args.type_calc)
-			print "\nNative: ",args.native, "\nComparison: ",srgs.singlefile," \nRMSD: ",rmsd
+			print "\nNative: ",args.native, "\nComparison: ",args.singlefile," \nRMSD: ",rmsd
 		else:
 			print "provide filename for calculation with --singlefile option. Use --help for more details."
-	if args.traj:
+	elif args.traj:
 		filelist=args.filelist
 		if os.path.exists(filelist):
 			outfilename = filelist + "_rmsd.out"
@@ -88,3 +88,5 @@ if __name__ ==  "__main__":
 			fout.close()
 		else:
 			print "provide filename for list of pdbs with --filelist option. Use --help for more details."
+	else:
+		print "option does not exist"
