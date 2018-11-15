@@ -1,0 +1,106 @@
+import os
+import sys
+import argparse
+
+templateLocal='''
+<ROSETTASCRIPTS>
+
+                <SCOREFXNS>
+                        <ScoreFunction name="ligand_soft_rep" weights="ligand_soft_rep">
+                        </ScoreFunction>
+                        <ScoreFunction name="hard_rep" weights="ligand">
+                        </ScoreFunction>
+                </SCOREFXNS>
+
+                <RESIDUE_SELECTORS>
+                        <Chain name="Protein_and_Glycan" chains="A,X" />
+                        <Chain name="Glycan" chains="X"/>
+                        <Chain name="ProteinOnly" chains="A" />
+                </RESIDUE_SELECTORS>
+
+                <SIMPLE_METRICS>
+                        <RMSDMetric name="rmsd" custom_type="default"  residue_selector="Protein_and_Glycan" use_native="true"/>
+                        <RMSDMetric name="rmsdligand" custom_type="ligand_ha" rmsd_type="rmsd_all_heavy" residue_selector="Glycan" use_native="true"/>
+                        <RMSDMetric name="rmsdprotein_sc" custom_type="protein_sc_ha" rmsd_type="rmsd_sc_heavy" residue_selector="ProteinOnly" use_native="true"/>
+                </SIMPLE_METRICS>
+
+                <LIGAND_AREAS>
+                        <LigandArea name="inhibitor_dock_sc" chain="X" cutoff="6.0" add_nbr_radius="true" all_atom_mode="false"/>
+                        <LigandArea name="inhibitor_final_sc" chain="X" cutoff="6.0" add_nbr_radius="true" all_atom_mode="false"/>
+                        <LigandArea name="inhibitor_final_bb" chain="X" cutoff="7.0" add_nbr_radius="false" all_atom_mode="true" Calpha_restraints="0.3"/>
+                </LIGAND_AREAS>
+
+                <INTERFACE_BUILDERS>
+                        <InterfaceBuilder name="side_chain_for_docking" ligand_areas="inhibitor_dock_sc"/>
+                        <InterfaceBuilder name="side_chain_for_final" ligand_areas="inhibitor_final_sc"/>
+                        InterfaceBuilder name="backbone" ligand_areas="inhibitor_final_bb" extension_window="3"/>
+                </INTERFACE_BUILDERS>
+
+                <MOVEMAP_BUILDERS>
+                        <MoveMapBuilder name="docking" sc_interface="side_chain_for_docking" minimize_water="false"/>
+                        <MoveMapBuilder name="final" sc_interface="side_chain_for_final"  minimize_water="false"/>
+                </MOVEMAP_BUILDERS>
+
+                <SCORINGGRIDS ligand_chain="X" width="15">
+                        <ClassicGrid grid_name="classic" weight="1.0"/>
+                </SCORINGGRIDS>
+
+                <MOVERS>
+                        <StartFrom name="start" chain="X">
+                                <Coordinates x="%s" y="%s" z="%s"/>
+                        </StartFrom>
+                        <DumpPdb name="dumppdb" fname="startfrom.pdb" scorefxn="ligand_soft_rep"/>
+                        <DumpPdb name="dumppdb2" fname="transform1.pdb" scorefxn="ligand_soft_rep"/>
+                        <Transform name="transform" chain="X" box_size="5.0" move_distance="0.2" angle="20" cycles="500" repeats="1" temperature="5" initial_perturb="1"/>
+                        <HighResDocker name="high_res_docker" cycles="12" repack_every_Nth="3" scorefxn="ligand_soft_rep" movemap_builder="docking"/>
+                        <FinalMinimizer name="final" scorefxn="hard_rep" movemap_builder="final"/>
+                        <InterfaceScoreCalculator name="add_scores" chains="X" scorefxn="hard_rep" native="startfrom1.pdb"/>
+                        <RunSimpleMetrics name="rmsdmetrics" metrics="rmsd,rmsdligand,rmsdprotein_sc" />
+                </MOVERS>
+
+                <PROTOCOLS>
+                        <Add mover_name="start"/>
+                        <Add mover_name="dumppdb"/>
+                        <Add mover_name="transform"/>
+                        <Add mover_name="dumppdb2"/>
+                        <Add mover_name="high_res_docker"/>
+                        <Add mover_name="final"/>
+                        <Add mover_name="add_scores"/>
+                        <Add mover_name="rmsdmetrics"/>
+                        <Add mover_name="add_scores"/>
+                </PROTOCOLS>
+
+
+</ROSETTASCRIPTS>
+
+'''
+
+def writefilewithcoordinates(x,y,z,filename):
+	f=open(filename,'w')
+	f.write(templateLocal %(x,y,z))
+	f.close()
+
+
+def writefileswithcoordinatesfromfile(inputfile,basename):
+	f=open(inputfile,'r')
+	lines=f.readlines()
+	f.close()
+	outfilename = basename
+	i=0
+	for line in lines:
+		dat = line.split()
+		if len(dat)==3:
+			i+=1		
+			writefilewithcoordinates(dat[0],dat[1],dat[2],outfilename + "_%03d.xml" %i)
+
+
+parser = argparse.ArgumentParser()
+parser.add_argument('--file', help='type of rmsd calculation, options are rmsd_ca')
+parser.add_argument('--output', help='list of pdb files for rmsd calculation', default='list.txt')
+
+args = parser.parse_args()
+print args	
+inputfile=args.file
+basename=args.output
+writefileswithcoordinatesfromfile(inputfile,basename)
+
