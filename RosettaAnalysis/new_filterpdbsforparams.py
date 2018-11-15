@@ -112,5 +112,5 @@ filtereddir = basename + "_filtereddir"
 os.system('mkdir -p %s' %filtereddir)
 for field in fields:
 	basename+=field+"_"
-#printmapping(sys.argv[1])
+printmapping(args.file)
 filterpdb(args.file,basename)
