@@ -2,7 +2,29 @@ import os
 import sys
 import argparse
 
+templatepdbflags='''
+-in
+        -file
+                -s T12_GalNAc.pdb
+                -extra_res_fa NGA_ideal.params
+-out:path:pdb /home/aferna45/T12/docking/T12_docking/global_docking/randoms/out_%03d/
 
+-packing
+        -ex1
+        -ex2
+        -no_optH false
+        -flip_HNQ true
+        -ignore_ligand_chi true
+
+
+
+
+
+-multiple_processes_writing_to_one_directory true
+-mistakes
+        -restore_pre_talaris_2013_behavior true
+-nstruct 1
+'''
 templateflags='''
 -in
         -file
@@ -45,12 +67,6 @@ templateDump='''
                         <Chain name="ProteinOnly" chains="A" />
                 </RESIDUE_SELECTORS>
 
-                <SIMPLE_METRICS>
-                        <RMSDMetric name="rmsd" custom_type="default"  residue_selector="Protein_and_Glycan" use_native="true"/>
-                        <RMSDMetric name="rmsdligand" custom_type="ligand_ha" rmsd_type="rmsd_all_heavy" residue_selector="Glycan" use_native="true"/>
-                        <RMSDMetric name="rmsdprotein_sc" custom_type="protein_sc_ha" rmsd_type="rmsd_sc_heavy" residue_selector="ProteinOnly" use_native="true"/>
-                </SIMPLE_METRICS>
-
                 <LIGAND_AREAS>
                         <LigandArea name="inhibitor_dock_sc" chain="X" cutoff="6.0" add_nbr_radius="true" all_atom_mode="false"/>
                         <LigandArea name="inhibitor_final_sc" chain="X" cutoff="6.0" add_nbr_radius="true" all_atom_mode="false"/>
@@ -81,8 +97,6 @@ templateDump='''
                         <Transform name="transform" chain="X" box_size="20.0" move_distance="0.2" angle="20" cycles="500" repeats="1" temperature="5" initial_perturb="1"/>
                         <HighResDocker name="high_res_docker" cycles="12" repack_every_Nth="3" scorefxn="ligand_soft_rep" movemap_builder="docking"/>
                         <FinalMinimizer name="final" scorefxn="hard_rep" movemap_builder="final"/>
-                        <InterfaceScoreCalculator name="add_scores" chains="X" scorefxn="hard_rep" native="startfrom1.pdb"/>
-                        <RunSimpleMetrics name="rmsdmetrics" metrics="rmsd,rmsdligand,rmsdprotein_sc" />
 
 		 </MOVERS>
 
@@ -146,7 +160,7 @@ templateGlobal='''
                         <Transform name="transform" chain="X" box_size="20.0" move_distance="0.2" angle="20" cycles="500" repeats="1" temperature="5" initial_perturb="1"/>
                         <HighResDocker name="high_res_docker" cycles="12" repack_every_Nth="3" scorefxn="ligand_soft_rep" movemap_builder="docking"/>
                         <FinalMinimizer name="final" scorefxn="hard_rep" movemap_builder="final"/>
-                        <InterfaceScoreCalculator name="add_scores" chains="X" scorefxn="hard_rep" native="startfrom1.pdb"/>
+                        <InterfaceScoreCalculator name="add_scores" chains="X" scorefxn="hard_rep" native="startfrom.pdb"/>
                         <RunSimpleMetrics name="rmsdmetrics" metrics="rmsd,rmsdligand,rmsdprotein_sc" />
                 </MOVERS>
 
@@ -191,16 +205,21 @@ def writefileswithcoordinatesfromfile(inputfile,basename):
 				f1 = open(dirpath + "/flags",'w')
 				f1.write(templateflags %(i))
 				f1.close()
+				f2 = open(dirpath + "/pdb_dump_flags",'w')
+                                f2.write(templatepdbflags %(i))
+                                f2.close()			
 			if dump:
 				writefilewithcoordinates(dat[0],dat[1],dat[2], templateDump, dirpath + "/dump.xml")
 			writefilewithcoordinates(dat[0],dat[1],dat[2], templateGlobal, dirpath + "/" +outfilename + ".xml")
 			if rundump:
-				cmdrundump = '%s -parser:protocol %s/dump.xml %s/flags ' %(RosettaBinary,dirpath,dirpath)
+				cmdrundump = 'cd %s; %s -parser:protocol dump.xml @pdb_dump_flags ' %(dirpath,RosettaBinary)
 				print cmdrundump
-				#os.system(cmdrundump)
-				if os.path.exists('%s/startfrom.pdb' %dirpath):
+				os.system("cp NGA_ideal.params %s/." %dirpath)
+				os.system("cp T12_GalNAc.pdb %s/." %dirpath)	
+				os.system(cmdrundump)
+				if os.path.exists('startfrom.pdb'):
 					print "file created %03d" %i
-	
+                                	#os.system("mv startfrom.pdb %s/." %dirpath)	
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--file', help='type of rmsd calculation, options are rmsd_ca')

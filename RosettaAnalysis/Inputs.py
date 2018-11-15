@@ -1,8 +1,10 @@
 start=0
 stop=-1
-step=10
+step=1
 trajId=1
-countmax=410
+countmax=400
 mode="file"
-filename="CollectedData_All"
-basename="P_301Res_0001_%03d_%08d.pdb"
+native="CleanStartPdb"
+filename="sorted"
+#"FilteredFile_total_score_.txt"
+basename="output_pdbs/CleanStartPdb_%04d.pdb"
