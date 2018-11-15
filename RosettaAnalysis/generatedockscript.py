@@ -167,9 +167,9 @@ templateGlobal='''
 
 '''
 
-def writefilewithcoordinates(x,y,z,filename):
+def writefilewithcoordinates(x,y,z,templ,filename):
 	f=open(filename,'w')
-	f.write(templateGlobal %(x,y,z))
+	f.write(templ %(x,y,z))
 	f.close()
 
 
@@ -192,14 +192,12 @@ def writefileswithcoordinatesfromfile(inputfile,basename):
 				f1.write(templateflags %(i))
 				f1.close()
 			if dump:
-				f2 = open(dirpath + "/dump.xml" ,'w')
-                                f2.write(templateDump)
-                                f2.close()
-			writefilewithcoordinates(dat[0],dat[1],dat[2], dirpath + "/" +outfilename + ".xml")
+				writefilewithcoordinates(dat[0],dat[1],dat[2], templateDump, dirpath + "/dump.xml")
+			writefilewithcoordinates(dat[0],dat[1],dat[2], templateGlobal, dirpath + "/" +outfilename + ".xml")
 			if rundump:
 				cmdrundump = '%s -parser:protocol %s/dump.xml %s/flags ' %(RosettaBinary,dirpath,dirpath)
 				print cmdrundump
-				os.system(cmdrundump)
+				#os.system(cmdrundump)
 				if os.path.exists('%s/startfrom.pdb' %dirpath):
 					print "file created %03d" %i
 	
