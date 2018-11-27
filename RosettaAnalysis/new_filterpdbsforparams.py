@@ -10,9 +10,10 @@ import mpl_toolkits
 def plotgraph(xvals,yvals,pltinfo,bHold=False,bshow=False):
 	print pltinfo
 	if not bHold:
-        	plt.title(pltinfo["title"]+"\n"+pltinfo["key"])
-        	plt.xlabel(pltinfo["xlabel"])
-        	plt.ylabel(pltinfo["ylabel"])
+		axis_font = { 'size':pltinfo["fontsize"]}
+        	#plt.title(pltinfo["title"]+"\n"+pltinfo["key"])
+        	plt.xlabel(pltinfo["xlabel"],**axis_font)
+        	plt.ylabel(pltinfo["ylabel"],**axis_font)
 	if "ylow" in pltinfo:
         	plt.ylim(ymin=pltinfo["ylow"])
 	if "yhigh" in pltinfo:
@@ -22,6 +23,7 @@ def plotgraph(xvals,yvals,pltinfo,bHold=False,bshow=False):
 	if "xhigh" in pltinfo:
 		plt.xlim(xmax=pltinfo["xhigh"])
 	if "key" in pltinfo:
+		plt.tick_params(axis='both',labelsize=pltinfo["tickfont"])
         	plt.scatter(xvals,yvals,alpha=pltinfo["alpha"],edgecolor=pltinfo["edgecolor"],s = pltinfo["scale"],color=pltinfo["color"],marker=pltinfo["marker"],label=pltinfo["key"])#,ecolor='xkcd:lavendar',capthick=4,capsize=2)
 		plt.legend()
 	else:
@@ -81,7 +83,7 @@ def plotgraphs():
 		temptitle = pltinfo["outfile"]
 		if not pltinfo["hold"]:
 			#Generating different plots for each file	
-			pltinfo["outfile"] = temp + "_"+str(ifile)
+			pltinfo["outfile"] = pltinfo["outfiles"][ifile]
 			#pltinfo["title"] = temptitle + "\n"+ curfile
 		else:
 			pltinfo["color"] = pltinfo["colors"][ifile]
@@ -118,6 +120,73 @@ def getmapping(sfile):
                 print entry,i
 	return mapheader
 
+def getTopN():
+   ifile=0
+   outfvals = open("Avg_Top%d.txt" %(info["N"]),'w')
+   for sfile in info["files"]:
+        f = open(sfile,'r')
+        lines = f.readlines()
+        f.close()
+        outf = open("Fields_Top%d_%s.txt" %(info["N"],info["outfiles"][ifile]),'w')
+        outfdata = open("Scfile_Top%d_%s.sc" %(info["N"],info["outfiles"][ifile]),'w')
+        print "Lines in file ",len(lines)
+        line0=lines[i0]
+        outfdata.write(line0)
+        headersplit = line0.split()
+        mapheader = dict()
+        i=0
+        for entry in headersplit:
+                mapheader[entry] = i
+                i+=1
+                print entry,i
+        dictofarrays = dict()
+        for field in fields:
+                dictofarrays[field]=[]
+                minfield = fields[field][0]
+                maxfield = fields[field][1]
+                print field,minfield,maxfield
+                outf.write("#%s\t%f\t%f\n" %(field, minfield, maxfield))
+                if field in mapheader:
+                        print "field found in header"
+                        fields[field].append(mapheader[field])
+                        print mapheader[field]
+        for line in lines[i0+1:]:
+                data = line.split()
+                if line.find("I_sc") != -1: continue
+                setTrue = False
+                addstring = []
+                for field in fields:
+                        minfield = fields[field][0]
+                        maxfield = fields[field][1]
+                        index = fields[field][2]
+                        val = float(data[index])
+                        if val<maxfield and val>=minfield:
+                                setTrue = True
+                                #print field,val
+                                addstring.append(str(val))
+				dictofarrays[field].append(val)
+                        else:
+                                setTrue = False
+                                #print field,"False"
+                                break
+                if setTrue:
+                        pdbfilename=data[mapheader["description"]]
+
+                        outf.write(pdbfilename+'\t'+'\t'.join(addstring)+"\n")
+                        outfdata.write(line)
+	#print dictofarrays
+	for field in fields:
+		dictofarrays[field].sort()
+		avg = 0.0
+		N = info["N"]
+		for val in dictofarrays[field][:N]:
+			avg += val
+		avg /= float(N)
+                outfvals.write("field\t%f\t%s\n" %(avg,reslist[ifile]))
+	outf.close()
+        outfdata.close()
+	ifile+=1
+   outfvals.close()
 
 def filterpdb(sfile,basename):
 	print "filtering %s ..." %sfile
@@ -247,6 +316,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument('--copy',default=False,action='store_true', help='copy files')
 parser.add_argument('--file', help='scorefile name or graph info file name')
 parser.add_argument('--plotscatter',default=False,action='store_true', help='plot graphs')
+parser.add_argument('--TopOnly',default=False,action='store_true', help='get top N')
 parser.add_argument('--file1', help='scorefile name')
 parser.add_argument('--file2', help='scorefile name')
 parser.add_argument('--mergefiles',default=False,action='store_true', help='merge files')
@@ -256,8 +326,8 @@ createlink = args.copy
 #fields = {"interface_delta_X":[-10,-4]}
 data = ["interaction_energy"]
 #basename="i_sc_les_than_neg4"
-fields = {"interaction_energy":[-40,-28.5],"substrate_rmsd": [0,100]}
-basename="HighResolution"
+fields = {"interaction_energy":[-40,-20]}
+basename="hOGTPeptidesPaper"
 outputdir = "output"
 pltinfo=dict()
 for field in fields:
@@ -272,7 +342,7 @@ if args.file1:
 if args.file2:
         print "file1 mapping"
         printmapping(args.file2)
-if not (args.printheader or args.mergefiles or args.plotscatter):
+if not (args.printheader or args.mergefiles or args.plotscatter or args.TopOnly):
 	filterpdb(args.file,basename)
 elif args.mergefiles:
 	mergedata=["interaction_energy","substrate_rmsd","glycan_rmsd"]
@@ -281,3 +351,6 @@ if args.plotscatter:
 	execfile(args.file)
 	print pltinfo
 	plotgraphs()
+if args.TopOnly:
+	execfile(args.file)
+	getTopN()
